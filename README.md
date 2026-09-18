@@ -2,7 +2,7 @@
 
 A personal portfolio website showcasing my work as a **Video Editor, Motion Designer, and Visual Storyteller**.
 
-Live Demo - https://voidfxportfolio.vercel.app/
+Live Demo - https://rahulshaw-portfolio.vercel.app/
 
 ## ✦ About
 
