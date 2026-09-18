@@ -19,7 +19,7 @@ function setupHeroNote() {
   const textEl = document.querySelector('.hero-note-text');
   if (!note || !textEl) return;
 
-  const lines = textEl.innerHTML.split(/<br\s*\/?>/i);
+  const lines = textEl.innerHTML.split(/<br\s*\/?\s*>/i);
   textEl.innerHTML = lines
     .map(line =>
       line
@@ -233,10 +233,7 @@ function setupCountUp() {
 setupCountUp();
 
 // =========================================================
-// EXPERIENCE TIMELINE PROGRESS — a vertical line in the
-// empty right-hand column that fills as the section scrolls
-// past, giving the row of rings/pluses some actual motion
-// tied to reading progress instead of just floating alone
+// EXPERIENCE TIMELINE PROGRESS
 // =========================================================
 function setupExperienceProgress() {
   const section = document.querySelector('.experience.section');
@@ -267,10 +264,12 @@ const modalClose = document.getElementById('modalClose');
 
 document.querySelectorAll('.video-card').forEach(card => {
   card.addEventListener('click', () => {
-    const src = card.querySelector('video')?.getAttribute('src');
+    const video = card.querySelector('video');
+    const src = video?.currentSrc || video?.getAttribute('src');
     if (!src || !videoModal || !modalVideo) return;
     modalVideo.src = src;
     videoModal.classList.add('open');
+    modalVideo.load();
     modalVideo.play().catch(() => {});
   });
 });
@@ -279,13 +278,63 @@ function closeModal() {
   if (!videoModal || !modalVideo) return;
   videoModal.classList.remove('open');
   modalVideo.pause();
-  modalVideo.src = '';
+  modalVideo.removeAttribute('src');
+  modalVideo.load();
 }
 
 modalClose && modalClose.addEventListener('click', closeModal);
 videoModal && videoModal.addEventListener('click', (e) => {
   if (e.target === videoModal) closeModal();
 });
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// =========================================================
+// ASSET PATH COMPATIBILITY
+// The repository stores media at its root, while the HTML uses
+// /assets and /assets/videos paths. Rewrite those references to
+// the real root files so the site works on Vercel/GitHub Pages
+// without requiring a duplicated assets directory.
+// =========================================================
+function fixMediaPaths() {
+  const rootFiles = new Set([
+    'ae.png', 'capcut.png', 'favicon.png', 'guitar.png', 'hm.png',
+    'pp.png', 'profile.png', 'royal.png', 'trip.png',
+    'ajxror.mp4', 'client.mp4', 'client2.mp4', 'ichi.mp4',
+    'jan.mp4', 'lam.mp4', 'mes.mp4', 'moviee.mp4', 'rin.mp4'
+  ]);
+
+  const rewrite = element => {
+    const attribute = element.tagName === 'LINK' ? 'href' : 'src';
+    const value = element.getAttribute(attribute);
+    if (!value) return;
+
+    const url = new URL(value, document.baseURI);
+    const name = url.pathname.split('/').pop().toLowerCase();
+    if (!rootFiles.has(name)) return;
+
+    // Keep query strings/hash fragments while using a deployment-safe URL.
+    url.pathname = `${new URL('.', document.baseURI).pathname}${name}`;
+    element.setAttribute(attribute, `${url.pathname}${url.search}${url.hash}`);
+  };
+
+  document.querySelectorAll('img, video, source, link[rel="icon"]').forEach(rewrite);
+
+  document.querySelectorAll('video').forEach(video => {
+    video.load();
+    const play = () => video.play().catch(() => {});
+    if (video.readyState >= 2) play();
+    else video.addEventListener('loadeddata', play, { once: true });
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', fixMediaPaths, { once: true });
+} else {
+  fixMediaPaths();
+}
 
 // =========================================================
 // BACK TO TOP
